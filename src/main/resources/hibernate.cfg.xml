@@ -5,8 +5,7 @@
     <session-factory>
         <!-- JDBC Database connection settings -->
         <property name="connection.driver_class">com.mysql.cj.jdbc.Driver</property>
-        <property name="connection.url">jdbc:mysql://localhost:3306/search_engine?
-                                            allowPublicKeyRetrieval=true&amp;useSSL=false</property>
+        <property name="connection.url">jdbc:mysql://localhost:3306/search_engine?useSSL=false</property>
         <property name="connection.username">root</property>
         <property name="connection.password">testtest</property>
         <!-- JDBC connection pool settings ... using built-in test pool -->
@@ -18,11 +17,11 @@
         <!-- Set the current session context -->
         <property name="current_session_context_class">thread</property>
         <!-- Drop and re-create the database schema on startup -->
-        <property name="hbm2ddl.auto">create</property>
+        <property name="hbm2ddl.auto">update</property>
 
-        <mapping class="entities.Page"></mapping>
-<!--        <mapping class="entities.Field"></mapping>-->
-<!--        <mapping class="entities.Lemma"></mapping>-->
-<!--        <mapping class="entities.Index"></mapping>-->
+        <mapping class="entities.Page"/>
+        <mapping class="entities.Field"/>
+        <mapping class="entities.Lemma"/>
+<!--        <mapping class="entities.Index"/>-->
     </session-factory>
 </hibernate-configuration>

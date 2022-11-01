@@ -7,7 +7,7 @@ import jakarta.persistence.*;
 public class Field {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", insertable = false, updatable = false, nullable = false)
     private Integer id;
 
@@ -19,6 +19,18 @@ public class Field {
 
     @Column(nullable = false)
     private Float weight;
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setSelector(String selector) {
+        this.selector = selector;
+    }
+
+    public void setWeight(Float weight) {
+        this.weight = weight;
+    }
 
     public Integer getId() {
         return id;

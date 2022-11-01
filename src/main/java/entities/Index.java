@@ -3,11 +3,11 @@ package entities;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "Indexes")
+@Table(name = "Index")
 public class Index {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", insertable = false, updatable = false, nullable = false)
     private Integer id;
 
@@ -16,6 +16,14 @@ public class Index {
 
     @Column(nullable = false)
     private Integer lemma_id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "page_id", referencedColumnName = "id", nullable = false)
+    private Page page;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "lemma_id", referencedColumnName = "id", nullable = false)
+    private Lemma lemma;
 
     @Column(nullable = false)
     private Float rank;

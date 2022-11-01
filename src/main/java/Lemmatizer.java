@@ -1,4 +1,5 @@
 import org.apache.lucene.morphology.LuceneMorphology;
+import org.apache.lucene.morphology.english.EnglishLuceneMorphology;
 import org.apache.lucene.morphology.russian.RussianLuceneMorphology;
 
 import java.io.IOException;
@@ -9,14 +10,18 @@ import java.util.Map;
 
 public class Lemmatizer {
 
-    public static void lemmatize(String text) {
+    public static Map<String, Integer> lemmatize(String text) {
 
-        String[] words = text.split("[\\s,.]+");
+        String[] words = text.split("[\\W[\\d]&&[^а-яА-Я]]+");
         Map<String, Integer> wordMap = new HashMap<>();
             for (String str : words) {
+                if (str.matches("[\\d]+")) {
+                    continue;
+                }
                 LuceneMorphology luceneMorph = null;
                 try {
-                    luceneMorph = new RussianLuceneMorphology();
+                    luceneMorph = (str.matches("[a-zA-Z]+")) ? new EnglishLuceneMorphology() :
+                                                                    new RussianLuceneMorphology();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -25,16 +30,16 @@ public class Lemmatizer {
                 String infoAboutWord = luceneMorph.getMorphInfo(word).get(0);
 
                 if (!(infoAboutWord.contains("СОЮЗ") || infoAboutWord.contains("МЕЖД") ||
-                        infoAboutWord.contains("ПРЕДЛ") || infoAboutWord.contains("ЧАСТ"))) {
+                        infoAboutWord.contains("ПРЕДЛ") || infoAboutWord.contains("ЧАСТ") ||
+                        infoAboutWord.matches("\\d"))) {
                     Integer oldCount = wordMap.get(word);
                     if (oldCount == null) {
                         oldCount = 0;
                     }
                     wordMap.put(word, oldCount + 1);
+                    System.out.println(word);
                 }
             }
-        for (String word : wordMap.keySet()) {
-            System.out.println(word + " - " + wordMap.get(word));
-        }
+            return wordMap;
     }
 }

@@ -2,12 +2,14 @@ package entities;
 
 import jakarta.persistence.*;
 
+import java.util.Set;
+
 @Entity
 @Table(name = "Pages")
 public class Page {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", insertable = false, updatable = false, nullable = false)
     private Integer id;
 
@@ -19,6 +21,13 @@ public class Page {
 
     @Column(nullable = false, columnDefinition = "MEDIUMTEXT")
     private String content;
+
+//    @ManyToMany
+//    @JoinTable(name = "index",
+//                joinColumns = @JoinColumn(name = "page_id", referencedColumnName = "id"),
+//                inverseJoinColumns = @JoinColumn(name = "lemma_id", referencedColumnName = "id")
+//    )
+//    private Set<Lemma> lemmas;
 
     public Integer getId() {
         return id;
@@ -51,4 +60,12 @@ public class Page {
     public void setContent(String content) {
         this.content = content;
     }
+
+//    public Set<Lemma> getLemmaSet() {
+//        return lemmas;
+//    }
+//
+//    public void setLemmaSet(Set<Lemma> lemmaSet) {
+//        this.lemmas = lemmaSet;
+//    }
 }

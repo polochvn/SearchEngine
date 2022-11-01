@@ -1,14 +1,12 @@
-import entities.Page;
-
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.RecursiveTask;
 
-public class TransitionLink extends RecursiveTask<Set<Page>> {
+public class TransitionLink extends RecursiveTask<Set<String>> {
 
     private NodeLink nodeLink;
     private String sitePath;
-    private static Set<String> allLinks = Collections.synchronizedSet(new LinkedHashSet<>());
+    private static Set<String> allLinks = new CopyOnWriteArraySet<>();
 
     public TransitionLink(NodeLink nodeLink, String sitePath) {
         this.nodeLink = nodeLink;
@@ -16,31 +14,32 @@ public class TransitionLink extends RecursiveTask<Set<Page>> {
     }
 
     @Override
-    protected Set<Page> compute() {
-        Set<Page> setPages = Collections.synchronizedSet(nodeLink.parseLink(nodeLink.getLink()));
-        Set<NodeLink> nodeLinkSet = Collections.synchronizedSet(new CopyOnWriteArraySet<>());
+    protected Set<String> compute() {
+        Set<String> links = Collections.synchronizedSet(nodeLink.parseLink(nodeLink.getLink()));
+        Set<NodeLink> nodeLinkSet = new CopyOnWriteArraySet<>();
 
-        for (Page page : setPages) {
-            if (!checkSet(page.getPath(), allLinks)) {
-                NodeLink nodeLink = new NodeLink(sitePath + page.getPath());
-                System.out.println(sitePath + page.getPath());
+        for (String page : links) {
+            if (!checkSet(page, allLinks)) {
+                NodeLink nodeLink = new NodeLink(sitePath + page);
+                //System.out.println(sitePath + page);
                 nodeLinkSet.add(nodeLink);
-                allLinks.add(page.getPath());
+                allLinks.add(page);
+                System.out.println(allLinks.size());
             }
         }
         nodeLink.setNodeLinkSet(nodeLinkSet);
 
         List<TransitionLink> listTask = new ArrayList<>();
-        for (NodeLink node : nodeLink.getNodeLinkSet()) {
+        for (NodeLink node : nodeLinkSet) {
             TransitionLink task = new TransitionLink(node, sitePath);
             task.fork();
             listTask.add(task);
         }
-        addResultsFromTasks(setPages, listTask);
-        return setPages;
+        addResultsFromTasks(links, listTask);
+        return links;
     }
 
-    private void addResultsFromTasks(Set<Page> set, List<TransitionLink> tasks) {
+    private void addResultsFromTasks(Set<String> set, List<TransitionLink> tasks) {
             for (TransitionLink item : tasks) {
                 set.addAll(item.join());
             }

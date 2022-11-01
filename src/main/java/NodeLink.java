@@ -1,25 +1,25 @@
 import entities.Page;
-import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import java.util.*;
+import java.util.concurrent.CopyOnWriteArraySet;
 
 public class NodeLink {
 
     private final String link;
     private Set<NodeLink> nodeLinkSet;
-    private static Set<Page> setPages;
+    private static final String SITE_PATH = "http://www.playback.ru/";
 
     public NodeLink(String link) {
         this.link = link;
-        setPages = Collections.synchronizedSet(new LinkedHashSet<>());
     }
 
-    public Set<Page> parseLink (String link) {
+    public Set<String> parseLink (String link) {
 
         Document document = null;
+        Set<String> setLinks = new CopyOnWriteArraySet<>();
         try {
             document = Jsoup.connect(link).get();
             Thread.sleep(100);
@@ -28,38 +28,26 @@ public class NodeLink {
 
             Elements links = document.select("a[href]");
             for (Element linkSite : links) {
+
                 String absLink = linkSite.attr("abs:href");
                 String relLink = linkSite.attr("href");
-                if (absLink.startsWith(link) || !(relLink.matches(".*\\.(bmp|gif|jpg|png|js|css|#)$"))){
-                    Page page = new Page();
-                    page.setPath(relLink);
-                    page.setContent(Jsoup.connect(absLink).get().html());
-                    Connection.Response response = document.connection().response();
-                    int code = response.statusCode();
-                    page.setCode(code);
-                    setPages.add(page);
+                if (absLink.contains(SITE_PATH) &&
+                        !(relLink.matches(".*\\.(bmp|gif|jpg|png|js|css|#)$"))){
+                    setLinks.add(relLink);
                 }
             }
         }
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return setPages;
+        return setLinks;
     }
 
     public String getLink() {
         return link;
     }
 
-    public Set<NodeLink> getNodeLinkSet() {
-        return nodeLinkSet;
-    }
-
     public void setNodeLinkSet(Set<NodeLink> nodeLinkSet) {
         this.nodeLinkSet = nodeLinkSet;
-    }
-
-    public static Set<Page> getSetPages() {
-        return setPages;
     }
 }
