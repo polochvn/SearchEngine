@@ -1,0 +1,58 @@
+spring:
+  datasource:
+    maxActive: 10
+    url: jdbc:mysql://localhost:3306/search_engine
+    username: root
+    password: testtest
+  jpa:
+    show_sql: false
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL5Dialect
+        format_sql: true
+    open-in-view: false
+    #        dialect: org.hibernate.dialect.MySQL5Dialect
+#  ?useUnicode=true&characterEncoding=utf8&useTimezone=true&serverTimezone=UTC
+sites:
+  sites:
+    - url: http://www.playback.ru
+      name: PlayBack.ru
+      pause: 0
+    - url: https://volochek.life
+      name: Вышний Волочёк
+      pause: 0
+    - url: http://radiomv.ru
+      name: Милицейская волна
+      pause: 0
+    - url: https://ipfran.ru
+      name: Институт прикладной физики Российской академии наук
+      pause: 0
+    - url: https://dimonvideo.ru
+      name: DIMONVIDEO
+      pause: 0
+    - url: https://nikoartgallery.com
+      name: Niko ART GALLERY
+      pause: 0
+    - url: https://et-cetera.ru/mobile
+      name: Театр «Et Cetera»
+      pause: 0
+    - url: https://www.lutherancathedral.ru
+      name: Кафедральный собор святых Петра и Павла
+      pause: 0
+    - url: https://dombulgakova.ru
+      name: Булгаковскiй домъ
+      pause: 0
+    - url: https://www.svetlovka.ru
+      name: Светловка
+      pause: 0
+    - url: https://www.lenta.ru
+      name: Лента.ру
+      pause: 500
+
+connect:
+  useragent: Mozilla/5.0 (Windows; U; WindowsNT 5.1; en-US; rv1.8.1.6) Gecko/20070725 Firefox/2.0.0.6
+  referrer: http://www.google.com
+
+webinterface: /admin
