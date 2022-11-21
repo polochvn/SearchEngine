@@ -1,6 +1,11 @@
 import entities.Lemma;
 import entities.Page;
+import entities.Site;
 import lemmatizator.Lemmatizer;
+import repository.FieldRepository;
+import repository.IndexRepository;
+import repository.PageRepository;
+import repository.SiteRepository;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -8,7 +13,10 @@ import java.util.stream.Collectors;
 
 public class SearchText {
 
-        private static Map<String, Lemma> lemmata = new HashMap<>();
+        private IndexRepository indexRepository;
+        private FieldRepository fieldRepository;
+        private PageRepository pageRepository;
+        private static Map<String, Lemma> lemmaMap = new HashMap<>();
 
         private static final Double PERCENTAGE_WORDS = 0.05;
 
@@ -17,13 +25,13 @@ public class SearchText {
                 for (String word : Lemmatizer.getLemmasList(text)) {
                         if (!(lemmasMap.get(word) == null) || !(lemmasMap.get(word).getPages().size() >
                                                 PERCENTAGE_WORDS * TransitionLink.getAllLinks().size())) {
-                                lemmata.put(word, lemmasMap.get(word));
+                                lemmaMap.put(word, lemmasMap.get(word));
                         }
                 }
         }
 
         public static Map<String, Lemma> getSortedLemmas() {
-                Map<String, Lemma> sortedMap = lemmata.entrySet()
+                Map<String, Lemma> sortedMap = lemmaMap.entrySet()
                                 .stream()
                                 .sorted(Collections.reverseOrder(Map.Entry.comparingByValue()))
                                 .collect(Collectors.toMap(Map.Entry::getKey,

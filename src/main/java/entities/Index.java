@@ -1,6 +1,5 @@
 package entities;
-
-import jakarta.persistence.*;
+import javax.persistence.*;
 
 @Entity
 @Table(name = "Index")
@@ -8,12 +7,6 @@ public class Index {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private int id;
-
-//    @Column(nullable = false)
-//    private Integer page_id;
-//
-//    @Column(nullable = false)
-//    private Integer lemma_id;
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "page_id", referencedColumnName = "id", nullable = false)
     private Page page;

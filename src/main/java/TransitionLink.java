@@ -1,14 +1,9 @@
-import entities.Index;
-import entities.Lemma;
-import entities.Page;
+import entities.*;
 import lemmatizator.Lemmatizer;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
-import repository.IndexRepository;
-import repository.LemmaRepository;
-import repository.PageRepository;
-import repository.SiteRepository;
+import repository.*;
 
 import java.io.IOException;
 import java.util.*;
@@ -26,12 +21,39 @@ public class TransitionLink extends RecursiveTask<Set<String>> {
     private static IndexRepository indexRepository;
     private static SiteRepository siteRepository;
     private static LemmaRepository lemmaRepository;
+    private Site site;
     private static ConcurrentHashMap<String, Index> indices = new ConcurrentHashMap<>();
     private static final Map<String, Float> TAGS = Map.of("title", 1F, "body", 0.8F);
 
-    public TransitionLink(NodeLink nodeLink, String sitePath) {
+    public TransitionLink(NodeLink nodeLink, String sitePath, Site site, FieldRepository fieldRepository,
+                          SiteRepository siteRepository, IndexRepository indexRepository,
+                          PageRepository pageRepository, LemmaRepository lemmaRepository) {
         this.nodeLink = nodeLink;
         this.sitePath = sitePath;
+
+        if (TransitionLink.indexRepository == null) {
+            TransitionLink.indexRepository = indexRepository;
+        }
+
+        if (TransitionLink.pageRepository == null) {
+            TransitionLink.pageRepository = pageRepository;
+        }
+
+        if (TransitionLink.siteRepository == null) {
+            TransitionLink.siteRepository = siteRepository;
+        }
+
+        if (TransitionLink.lemmaRepository == null) {
+            TransitionLink.lemmaRepository = lemmaRepository;
+        }
+
+        this.site = site;
+    }
+
+    public TransitionLink(NodeLink nodeLink, String sitePath, Site site) {
+        this.nodeLink = nodeLink;
+        this.sitePath = sitePath;
+        this.site = site;
     }
 
     @Override
@@ -39,45 +61,39 @@ public class TransitionLink extends RecursiveTask<Set<String>> {
         Set<String> links = Collections.synchronizedSet(nodeLink.parseLink(nodeLink.getLink()));
         Set<NodeLink> nodeLinkSet = new CopyOnWriteArraySet<>();
 
+        try {
         for (String link : links) {
             if (!checkSet(link, allLinks)) {
-                try {
                     Connection.Response response = Jsoup.connect(sitePath + link)
                         .get().connection().response();
                     Document document = response.parse();
                     addPage(response, document, link);
-                }
-                catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
                 NodeLink nodeLink = new NodeLink(sitePath + link);
                 nodeLinkSet.add(nodeLink);
                 allLinks.add(link);
-
-                for (String word : indices.keySet()) {
-                    System.out.println(indices.get(word).getId() + ", "
-                                        + indices.get(word).getPage().getPath() + ", "
-                                        + indices.get(word).getLemma().getLemma() + ", "
-                                        + indices.get(word).getRank());
-                    //InitialSession.getSession().saveOrUpdate(indices.get(word));
-                }
             }
         }
-//        for (String str7 : lemmasMap.keySet()){
-//            InitialSession.getSession().saveOrUpdate(lemmasMap.get(str7));
-//        }
         nodeLink.setNodeLinkSet(nodeLinkSet);
+        } catch (IOException | NullPointerException exception) {
+            site.setError("Остановка индексации");
+            site.setStatus(Status.FAILED);
+            siteRepository.save(site);
+        }
 
         List<TransitionLink> listTask = new ArrayList<>();
         for (NodeLink node : nodeLinkSet) {
-            TransitionLink task = new TransitionLink(node, sitePath);
+            TransitionLink task = new TransitionLink(node, sitePath, site);
             task.fork();
             listTask.add(task);
         }
-
-
         addResultsFromTasks(links, listTask);
         return links;
+    }
+
+    public void addPage(String link) throws IOException {
+        Connection.Response response = Jsoup.connect(link).get().connection().response();
+
+        addPage(response, response.parse(), link);
     }
 
     public void addPage(Connection.Response response, Document doc, String link) {
@@ -85,6 +101,7 @@ public class TransitionLink extends RecursiveTask<Set<String>> {
         page.setCode(response.statusCode());
         page.setPath(link);
         page.setContent(doc.html());
+        page.setSite(site);
 
         pageRepository.save(page);
 
@@ -185,5 +202,9 @@ public class TransitionLink extends RecursiveTask<Set<String>> {
 
     public static Set<String> getAllLinks() {
         return allLinks;
+    }
+
+    public Site getSite() {
+        return site;
     }
 }

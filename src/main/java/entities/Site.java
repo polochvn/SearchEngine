@@ -1,30 +1,24 @@
 package entities;
 
-import jakarta.persistence.*;
-
+import javax.persistence.*;
 import java.time.LocalDateTime;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
 
 @Entity
-@Table(name = "Index")
+@Table(name = "site")
 public class Site {
-
-    public static final String INDEXING = "INDEXING";
-    public static final String INDEXED = "INDEXED";
-    public static final String FAILED = "FAILED";
-    public static final String REMOVING = "REMOVING";
-
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private int id;
-    @Column(columnDefinition = "enum('INDEXING','INDEXED','FAILED','REMOVING')",
-            nullable = false)
-    private String type;
     @Column(name = "status_time", columnDefinition = "DATETIME", nullable = false)
     private LocalDateTime statusTime;
     @Column(name = "last_error", columnDefinition = "text")
-    private String lastError;
+    private String error;
+
+    @Enumerated(EnumType.ORDINAL)
+    private Status status;
     @Column(nullable = false)
     private String url;
     @Column(nullable = false)
@@ -47,28 +41,26 @@ public class Site {
         this.id = id;
     }
 
-    public String getType() {
-        return type;
+    public Status getStatus() {
+        return status;
     }
 
-    public void setType(String type) {
-        this.type = type;
+    public void setStatus(Status status) {
+        this.status = status;
     }
-
     public LocalDateTime getStatusTime() {
         return statusTime;
     }
 
-    public void setStatusTime(LocalDateTime statusTime) {
+    public void setStatusTime(Date statusTime) {
         this.statusTime = statusTime;
     }
 
-    public String getLastError() {
-        return lastError;
+    public String getError() {
+        return error;
     }
-
-    public void setLastError(String lastError) {
-        this.lastError = lastError;
+    public void setError(String error) {
+        this.error = error;
     }
 
     public String getUrl() {

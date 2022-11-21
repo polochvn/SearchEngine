@@ -1,9 +1,8 @@
 package entities;
-
-import jakarta.persistence.*;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
+import javax.persistence.*;
 import java.util.List;
 import java.util.Set;
 
@@ -75,5 +74,13 @@ public class Page {
 
     public void setLemmaSet(Set<Lemma> lemmaSet) {
         this.lemmas = lemmaSet;
+    }
+
+    public Site getSite() {
+        return site;
+    }
+
+    public void setSite(Site site) {
+        this.site = site;
     }
 }
