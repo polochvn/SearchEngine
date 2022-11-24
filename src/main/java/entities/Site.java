@@ -1,7 +1,6 @@
 package entities;
 
 import javax.persistence.*;
-import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
@@ -13,7 +12,7 @@ public class Site {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private int id;
     @Column(name = "status_time", columnDefinition = "DATETIME", nullable = false)
-    private LocalDateTime statusTime;
+    private Date statusTime;
     @Column(name = "last_error", columnDefinition = "text")
     private String error;
 
@@ -48,7 +47,7 @@ public class Site {
     public void setStatus(Status status) {
         this.status = status;
     }
-    public LocalDateTime getStatusTime() {
+    public Date getStatusTime() {
         return statusTime;
     }
 

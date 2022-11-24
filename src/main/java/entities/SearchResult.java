@@ -6,6 +6,8 @@ public class SearchResult {
     private String title;
     private String snippet;
     private float relevance;
+    private String site;
+    private String siteName;
 
     public String getUri() {
         return uri;
@@ -37,5 +39,21 @@ public class SearchResult {
 
     public void setRelevance(float relevance) {
         this.relevance = relevance;
+    }
+
+    public String getSite() {
+        return site;
+    }
+
+    public void setSite(String site) {
+        this.site = site;
+    }
+
+    public String getSiteName() {
+        return siteName;
+    }
+
+    public void setSiteName(String siteName) {
+        this.siteName = siteName;
     }
 }

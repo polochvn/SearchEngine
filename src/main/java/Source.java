@@ -1,9 +1,11 @@
 import entities.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.jpa.convert.threeten.Jsr310JpaConverters;
 import org.springframework.stereotype.Service;
 import repository.*;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ForkJoinPool;
@@ -254,9 +256,9 @@ public class Source {
 
     public Search search(String query, String site, int offset, int limit) {
 
-        SearchEngine searchEngine = new SearchEngine();
+        SearchText searchText = new SearchText();
 
-        Search search = searchEngine.search(query, siteRepository.findSiteByUrl(site), pageRepository,
+        Search search = searchText.search(query, siteRepository.findSiteByUrl(site), pageRepository,
                 indexRepository, fieldRepository, siteRepository);
 
         if (search.getCount() < offset) {
