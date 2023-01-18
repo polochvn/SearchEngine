@@ -23,33 +23,13 @@ public class NodeLink {
         this.link = link;
     }
 
-    public String parseOneLink(String link){
-
-            if (document == null) {
-                try {
-                    document = Jsoup.connect(link).get();
-                    Elements links = document.select("a[href]");
-                    for (Element linkSite : links) {
-
-                        String relLink = linkSite.attr("href");
-                        if (link.contains(relLink) && relLink.length() > 1) {
-                            return relLink;
-                        }
-                    }
-
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        return "";
-    }
-
     public Set<String> parseLink (String link) {
 
         Set<String> setLinks = new CopyOnWriteArraySet<>();
         try {
             if (document == null) {
                 document = Jsoup.connect(link).get();
+                Thread.sleep(100);
             }
             Elements links = document.select("a[href]");
             for (Element linkSite : links) {

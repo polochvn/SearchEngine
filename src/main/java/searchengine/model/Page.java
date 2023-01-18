@@ -13,7 +13,6 @@ public class Page {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id")
     private Integer id;
 
     @Column(name = "path", nullable = false, unique = true, columnDefinition = "VARCHAR(256)")

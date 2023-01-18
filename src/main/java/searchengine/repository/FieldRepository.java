@@ -6,4 +6,5 @@ import searchengine.model.Field;
 
 @Repository
 public interface FieldRepository extends JpaRepository<Field, Integer> {
+    Field findByName(String name);
 }

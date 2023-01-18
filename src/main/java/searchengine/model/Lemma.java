@@ -13,8 +13,7 @@ import java.util.List;
 public class Lemma implements Comparable<Lemma>{
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id")
-    private int id;
+    private Integer id;
 
     @Column(name = "lemma", nullable = false)
     private String lemma;

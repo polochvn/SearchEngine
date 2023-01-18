@@ -5,12 +5,9 @@ import org.jsoup.nodes.Document;
 import searchengine.config.IndexRank;
 import searchengine.config.Search;
 import searchengine.config.SearchResult;
-import searchengine.lemmatizator.Materialize;
+import searchengine.materializer.Materialize;
 import searchengine.model.*;
-import searchengine.repository.FieldRepository;
-import searchengine.repository.IndexRepository;
-import searchengine.repository.PageRepository;
-import searchengine.repository.SiteRepository;
+import searchengine.repository.*;
 
 import java.io.IOException;
 import java.util.*;
@@ -19,31 +16,33 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class SearchText {
-        private final Materialize lemmatizer;
+        private final Materialize materialize;
         private IndexRepository indexRepository;
         private FieldRepository fieldRepository;
         private PageRepository pageRepository;
-        public SearchText() {
-                lemmatizer = new Materialize();
-        }
+        public SearchText(LemmaRepository lemmaRepository) { materialize = new Materialize(lemmaRepository);}
         public Search search(String text, Site site, PageRepository pageRepository, IndexRepository indexRepository,
-                             FieldRepository fieldRepository, SiteRepository siteRepository) throws IOException {
+                             FieldRepository fieldRepository, SiteRepository siteRepository) {
                 this.indexRepository = indexRepository;
                 this.fieldRepository = fieldRepository;
                 this.pageRepository = pageRepository;
 
                 Set<SearchResult> searchResults = new TreeSet<>(Comparator.comparing(SearchResult::getRelevance));
 
-                if (site == null) {
-                        siteRepository.findAll().forEach(s -> {
-                                try {
-                                        searchResults.addAll(searchingBySite(s, text));
-                                } catch (IOException e) {
-                                        throw new RuntimeException(e);
-                                }
-                        });
-                } else {
-                        searchResults.addAll(searchingBySite(site, text));
+                try {
+                        if (site == null) {
+                                siteRepository.findAll().forEach(s -> {
+                                        try {
+                                                searchResults.addAll(searchingBySite(s, text));
+                                        } catch (IOException e) {
+                                        e.printStackTrace();
+                                        }
+                                });
+                        } else {
+                                searchResults.addAll(searchingBySite(site, text));
+                        }
+                } catch (IOException e) {
+                        e.printStackTrace();
                 }
 
                 Search search = new Search();
@@ -59,12 +58,11 @@ public class SearchText {
                 List<Page> pages = pageRepository.findAllBySite(site);
                 return addSearchQuery(text, site, pages);
         }
-
         private Set<SearchResult> addSearchQuery(String text, Site site, List<Page> pages) throws IOException {
                 SortedSet<Lemma> lemmas = new TreeSet<>();
 
                 for (String word : text.split(" ")) {
-                        Lemma lemma = lemmatizer.getLemma(word.toLowerCase(Locale.ROOT), site);
+                        Lemma lemma = materialize.getLemma(word.toLowerCase(Locale.ROOT), site);
                         if (lemma != null) {
                                 lemmas.add(lemma);
                         }
@@ -113,28 +111,32 @@ public class SearchText {
                         SearchResult sResult = new SearchResult();
                         AtomicBoolean isHaven = new AtomicBoolean(false);
 
-                        for (Field field : fields){
+                        for (Lemma lem : lemmas.stream().toList()) {
+                                int count = 0;
+                                String l = lem.getLemma();
 
-                                document.select(field.getSelector()).forEach(i -> {
-                                        String str = i.text().toLowerCase();
-                                        int count = 0;
-                                        for (Lemma lem : lemmas.stream().toList()) {
-                                                String l = lem.getLemma();
-                                                if (str.contains(l)) {
+                                for (Field field : fields) {
+                                        String i = document.select(field.getSelector()).text().toLowerCase();
+
+                                        String str = i.toLowerCase();
+                                        for (String word : Materialize.getSeparateWordsList(str)) {
+
+                                                if (Materialize.legitimatize(word).containsKey(l)) {
                                                         count++;
-                                                        str = str.replaceAll("(?i)" + l,
-                                                                "<b>" + l + "</b>");
-                                                } else {
-                                                        lemmas.remove(lem);
+                                                        str = str.replaceAll("(?i)" + word,
+                                                                        "<b>" + word + "</b>");
+                                                }
+
+                                                if (count > maxSnippet.get()) {
+                                                        snippet.set(str);
+                                                        maxSnippet.set(count);
+                                                        isHaven.set(true);
                                                 }
                                         }
-
-                                        if (count > maxSnippet.get()) {
-                                                snippet.set(str);
-                                                maxSnippet.set(count);
-                                                isHaven.set(true);
-                                        }
-                                });
+                                }
+                                if (count == 0) {
+                                        lemmas.remove(lem);
+                                }
                         }
 
                         if (isHaven.get()) {

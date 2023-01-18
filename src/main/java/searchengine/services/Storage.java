@@ -1,40 +1,38 @@
 package searchengine.services;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.springframework.stereotype.Service;
 import searchengine.config.Search;
 import searchengine.config.SearchResult;
 import searchengine.config.SitesList;
 import searchengine.config.Status;
-import searchengine.lemmatizator.Materialize;
 import searchengine.model.*;
 import searchengine.parse.NodeLink;
 import searchengine.parse.TransitionLink;
 import searchengine.repository.*;
 import searchengine.search.SearchText;
 
-import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 @Service
 @RequiredArgsConstructor
 public class Storage {
+    private final static Log log = LogFactory.getLog(Storage.class);
     private static final int THREADS = 3;
     private static final Map<String, Float> fields = new HashMap<>(
                                         Map.of("title", 1.0F, "body", 0.8F));
-    @Autowired
-    private FieldRepository fieldRepository;
-    @Autowired
-    private LemmaRepository lemmaRepository;
-    @Autowired
-    private PageRepository pageRepository;
-    @Autowired
-    private IndexRepository indexRepository;
-    @Autowired
-    private SiteRepository siteRepository;
+    private TransitionLink transition;
+
+    private final FieldRepository fieldRepository;
+    private final LemmaRepository lemmaRepository;
+    private final PageRepository pageRepository;
+    private final IndexRepository indexRepository;
+    private final SiteRepository siteRepository;
     private final SitesList sites;
     private List<Thread> threads;
     private List<ForkJoinPool> forkJoinPools;
@@ -42,32 +40,43 @@ public class Storage {
         indexRepository.deleteAll();
         lemmaRepository.deleteAll();
         pageRepository.deleteAll();
-        siteRepository.deleteAll();
+        fieldRepository.deleteAll();
     }
-
     private TransitionLink transition(Site site, NodeLink nodeLink) {
-        return new TransitionLink(nodeLink, site.getUrl(), site, fieldRepository, siteRepository,
-                                                indexRepository, pageRepository, lemmaRepository);
+        transition = new TransitionLink(nodeLink, site.getUrl(), site, fieldRepository, siteRepository,
+                                        indexRepository, pageRepository, lemmaRepository);
+        transition.onStartIndexing();
+        return transition;
     }
-
     public void initFields(){
-        for (String str : fields.keySet()) {
-            Field field = new Field();
-            field.setName(str);
-            field.setSelector(str);
-            field.setWeight(fields.get(str));
+        for (String name : fields.keySet()) {
+            Field field = fieldRepository.findByName(name);
+            if (field == null) {
+                field = new Field();
+            }
+            field.setName(name);
+            field.setSelector(name);
+            field.setWeight(fields.get(name));
             fieldRepository.save(field);
         }
     }
     public void indexing() {
         threads = new ArrayList<>();
         forkJoinPools = new ArrayList<>();
-
         clearData();
-        Materialize.setLemmaRepository(lemmaRepository);
 
         List<TransitionLink> parses = new ArrayList<>();
         List<searchengine.config.Site> siteList = sites.getSites();
+        if (siteList.size() == 0) {
+            for (Site site : siteRepository.findAll()) {
+                searchengine.config.Site nSite = new searchengine.config.Site();
+                nSite.setUrl(site.getUrl());
+                nSite.setName(site.getName());
+                siteList.add(nSite);
+            }
+        }
+        log.info("Sites number " + siteList.size());
+
         initFields();
 
         for (searchengine.config.Site valueSite : siteList) {
@@ -97,23 +106,22 @@ public class Storage {
             Site site = parse.getSite();
 
             try {
-
                 ForkJoinPool forkJoinPool = new ForkJoinPool(THREADS);
-
                 forkJoinPools.add(forkJoinPool);
 
                 forkJoinPool.execute(parse);
-                int count = parse.join();
-                System.out.println(count);
+                parse.join();
 
+                if (!forkJoinPool.isTerminating()) {
+                    saveStoppedSite(site);
+                }
                 site.setStatus(Status.INDEXED);
                 siteRepository.save(site);
 
             } catch (CancellationException ex) {
                 ex.printStackTrace();
-                site.setError("Error: " + ex.getMessage());
-                site.setStatus(Status.FAILED);
-                siteRepository.save(site);
+                log.warn(site.getError());
+                saveStoppedSite(site);
             }
         }));
         }
@@ -126,8 +134,10 @@ public class Storage {
         AtomicBoolean isIndexing = new AtomicBoolean(false);
 
         siteRepository.findAll().forEach(site -> {
-            if (site.getStatus().equals(Status.INDEXING)) {
-                isIndexing.set(true);
+            if (site.getStatus().equals(Status.INDEXING) && !(forkJoinPools == null)) {
+                if (!(forkJoinPools.size() == 0)) {
+                    isIndexing.set(true);
+                }
             }
         });
 
@@ -140,6 +150,9 @@ public class Storage {
     }
 
     public boolean stopIndexing() {
+        if (!(transition == null)) {
+            transition.offStartIndexing();
+        }
         AtomicBoolean isIndexing = new AtomicBoolean(false);
 
         siteRepository.findAll().forEach(site -> {
@@ -152,33 +165,50 @@ public class Storage {
             return true;
         }
 
-        forkJoinPools.forEach(ForkJoinPool::shutdownNow);
+        for (ForkJoinPool pool : forkJoinPools) {
+            pool.shutdownNow();
+            try {
+                isIndexing.set(pool.awaitTermination(5, TimeUnit.MINUTES));
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
         threads.forEach(Thread::interrupt);
 
-        siteRepository.findAll().forEach(site -> {
-            site.setError("Stop Indexing!");
-            site.setStatus(Status.FAILED);
-            siteRepository.save(site);
-        });
-
+        if (isIndexing.get()) {
+            for (Site site : siteRepository.findAll()) {
+                saveStoppedSite(site);
+            }
+        }
         threads.clear();
         forkJoinPools.clear();
 
+        log.warn("Stop indexing!");
         return false;
+    }
+
+    public void saveStoppedSite(Site site) {
+        site.setError("Индексация остановлена принудительно!");
+        site.setStatus(Status.FAILED);
+        siteRepository.save(site);
     }
 
     public boolean indexPage(String url) {
         List<Site> siteList = siteRepository.findAll();
 
         initFields();
-        NodeLink nodeLink = new NodeLink(url);
+
+        Page page = null;
+
         if (siteList.size() == 0) {
             List<searchengine.config.Site> configSites = sites.getSites();
 
             for (searchengine.config.Site configSite : configSites) {
-                if (url.contains(configSite.getUrl()) &&
-                        pageRepository.findByPath(nodeLink.parseOneLink(nodeLink.getLink())) == null) {
+                page = pageRepository.findByPath(url.replaceAll(configSite.getUrl(), ""));
+
+                if (url.contains(configSite.getUrl()) && page == null) {
                     String mainPage = configSite.getUrl();
+
                     Site site = new Site();
 
                     site.setUrl(mainPage);
@@ -188,16 +218,12 @@ public class Storage {
                     site.setName(configSite.getName());
                     siteRepository.save(site);
 
-                    NodeLink node = new NodeLink(site.getUrl());
+                    NodeLink node = new NodeLink(url);
                     TransitionLink parse = new TransitionLink(node, site.getUrl(), site,
                             fieldRepository, siteRepository, indexRepository,
                             pageRepository, lemmaRepository);
-                    try {
-                        parse.addPage(url);
-                    } catch (IOException e) {
-                        return false;
-                    }
 
+                    parse.addPage(url);
                     site.setStatus(Status.INDEXED);
                     siteRepository.save(site);
 
@@ -206,21 +232,17 @@ public class Storage {
             }
         } else {
             for (Site site : siteList) {
-                if (url.contains(site.getUrl()) &&
-                        pageRepository.findByPath(nodeLink.parseOneLink(nodeLink.getLink())) == null) {
+                page = pageRepository.findByPath(url.replaceAll(site.getUrl(), ""));
+
+                if (url.contains(site.getUrl()) && page == null) {
                     site.setStatus(Status.INDEXING);
                     siteRepository.save(site);
 
-                    NodeLink node = new NodeLink(site.getUrl());
+                    NodeLink node = new NodeLink(url);
                     TransitionLink parse = new TransitionLink(node, site.getUrl(), site,
                                             fieldRepository, siteRepository, indexRepository,
                                                         pageRepository, lemmaRepository);
-                    try {
-                        parse.addPage(site.getUrl());
-                    } catch (IOException e) {
-                        return false;
-                    }
-
+                    parse.addPage(url);
                     site.setStatus(Status.INDEXED);
                     siteRepository.save(site);
 
@@ -228,16 +250,15 @@ public class Storage {
                 }
             }
         }
-        return false;
+
+        return !(page == null);
     }
 
-    public Search search(String query, String site, int offset, int limit) throws IOException {
+    public Search search(String query, String site, int offset, int limit) {
 
-        SearchText searchText = new SearchText();
-
+        SearchText searchText = new SearchText(lemmaRepository);
         Search search = searchText.search(query, siteRepository.findSiteByUrl(site), pageRepository,
-                indexRepository, fieldRepository, siteRepository);
-
+                                                indexRepository, fieldRepository, siteRepository);
         if (search.getCount() < offset) {
             return new Search();
         }

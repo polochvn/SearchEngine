@@ -1,8 +1,12 @@
-package searchengine.lemmatizator;
+package searchengine.materializer;
 
+import lombok.AllArgsConstructor;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
+import searchengine.parse.TransitionLink;
 import searchengine.repository.LemmaRepository;
 import searchengine.model.Lemma;
 import searchengine.model.Site;
@@ -12,12 +16,15 @@ import java.util.*;
 
 @Component
 @Scope(scopeName = ConfigurableBeanFactory.SCOPE_PROTOTYPE)
+@AllArgsConstructor
 public class Materialize {
-    private static LemmaRepository lemmaRepository;
+    private final LemmaRepository lemmaRepository;
+
     public Lemma getLemma(String word, Site site) {
 
         if (checkRussianForm(word)) {
-            return lemmaRepository.findLemmaByLemmaAndSite(word, site);
+            Lemma lemma = lemmaRepository.findLemmaByLemmaAndSite(word, site);
+            return lemma;
         }
         return null;
     }
@@ -29,11 +36,11 @@ public class Materialize {
         if (!word.matches(russianAlphabet)) {
             return false;
         }
-        List<String> wordBaseForm;
+        List<String> wordBaseForm = null;
         try {
             wordBaseForm = MorphInit.getLuceneMorph().getMorphInfo(word);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            e.printStackTrace();
         }
         return checkWrongType(wordBaseForm.toString());
     }
@@ -46,46 +53,42 @@ public class Materialize {
                 !word.contains("ЧАСТ");
     }
 
-    public static Map<String, Integer> legitimatize(String text){
+    public static Map<String, Integer> legitimatize(String text) {
 
         Map<String, Integer> wordMap = new HashMap<>();
-            for (String str : getSeparateWordsList(text)) {
+        for (String str : getSeparateWordsList(text)) {
 
-                //System.out.println(str.toLowerCase(Locale.ROOT));
-                String word = null;
-                try {
-                    word = MorphInit.getLuceneMorph().getNormalForms(str.toLowerCase(Locale.ROOT)
-                                                            .replaceAll("\\p{Punct}", "")
-                                                            .replaceAll("[^а-яё ]", "")
-                                                            .replaceAll("ё", "е")).get(0);
-                    String infoAboutWord = MorphInit.getLuceneMorph().getMorphInfo(word).get(0);
+            String word;
+            try {
+                word = MorphInit.getLuceneMorph().getNormalForms(str.toLowerCase(Locale.ROOT)
+                        .replaceAll("\\p{Punct}", "")
+                        .replaceAll("[^а-яё ]", "")
+                        .replaceAll("ё", "е")).get(0);
+                String infoAboutWord = MorphInit.getLuceneMorph().getMorphInfo(word).get(0);
 
-                    if (checkWrongType(infoAboutWord)) {
-                        Integer oldCount = wordMap.get(word);
-                        if (oldCount == null) {
-                            oldCount = 0;
-                        }
-                        wordMap.put(word, oldCount + 1);
+                if (checkWrongType(infoAboutWord)) {
+                    Integer oldCount = wordMap.get(word);
+                    if (oldCount == null) {
+                        oldCount = 0;
                     }
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
+                    wordMap.put(word, oldCount + 1);
                 }
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-            return wordMap;
+        }
+        return wordMap;
     }
+
     public static List<String> getSeparateWordsList(String text) {
         String[] words = text.split("[\\W\\d&&[^а-яА-Я]]+");
         List<String> list = new ArrayList<>();
         for (String word : words) {
-            if (word.matches("[\\d[a-zA-Z_]]+") || text.equals("")) {
+            if (word.matches("[\\d[a-zA-Z_]]+") || word.equals("") || text.equals("")) {
                 continue;
             }
             list.add(word);
         }
         return list;
-    }
-
-    public static void setLemmaRepository(LemmaRepository lemmaRepository) {
-        Materialize.lemmaRepository = lemmaRepository;
     }
 }

@@ -1,5 +1,6 @@
 package searchengine.controllers;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.configurationprocessor.json.JSONException;
 import org.springframework.boot.configurationprocessor.json.JSONObject;
@@ -11,21 +12,14 @@ import searchengine.repository.SiteRepository;
 import searchengine.services.StatisticsService;
 import searchengine.services.Storage;
 
-import java.io.IOException;
-
 @RestController
 @RequestMapping("/api")
+@RequiredArgsConstructor
 public class ApiController {
 
     private final StatisticsService statisticsService;
-    @Autowired
-    private Storage storage;
-    @Autowired
-    private SiteRepository siteRepository;
-    public ApiController(StatisticsService statisticsService) {
-        this.statisticsService = statisticsService;
-    }
-
+    private final Storage storage;
+    private final SiteRepository siteRepository;
     @GetMapping("/statistics")
     public ResponseEntity<StatisticsResponse> statistics() {
         return ResponseEntity.ok(statisticsService.getStatistics());
@@ -42,7 +36,7 @@ public class ApiController {
                 response.put("result", true);
             }
         } catch (JSONException e) {
-            throw new RuntimeException(e);
+            e.printStackTrace();
         }
         return new ResponseEntity<>(response.toString(), HttpStatus.OK);
     }
@@ -60,7 +54,7 @@ public class ApiController {
                 response.put("result", true);
             }
         } catch (JSONException e) {
-            throw new RuntimeException(e);
+            e.printStackTrace();
         }
         return new ResponseEntity<>(response.toString(), HttpStatus.OK);
     }
@@ -83,7 +77,7 @@ public class ApiController {
                         "указанных в конфигурационном файле");
             }
         } catch (JSONException e) {
-            throw new RuntimeException(e);
+            e.printStackTrace();
         }
         return new ResponseEntity<>(response.toString(), HttpStatus.OK);
     }
@@ -92,7 +86,7 @@ public class ApiController {
     public ResponseEntity<?> search(@RequestParam(name = "query", required = false) String query,
                                     @RequestParam(name = "site", required = false) String site,
                                     @RequestParam(name = "offset", defaultValue = "0") int offset,
-                                    @RequestParam(name = "limit", defaultValue = "20") int limit) throws IOException {
+                                    @RequestParam(name = "limit", defaultValue = "20") int limit) {
         if (query == null) {
             JSONObject response = new JSONObject();
 
@@ -100,22 +94,25 @@ public class ApiController {
                 response.put("result", false);
                 response.put("error", "Задан пустой поисковый запрос");
             } catch (JSONException ex) {
-                throw new RuntimeException(ex);
+                ex.printStackTrace();
             }
 
             return new ResponseEntity<>(response.toString(), HttpStatus.OK);
         }
 
-        if (site == null || siteRepository.findSiteByUrl(site).getUrl() == null) {
+        if (site == null) {
+            return new ResponseEntity<>(storage.search(query, site, offset, limit), HttpStatus.OK);
+        }
+
+        if (siteRepository.findSiteByUrl(site).getUrl() == null) {
             JSONObject response = new JSONObject();
 
             try {
                 response.put("result", false);
                 response.put("error", "Указанная страница не найдена");
             } catch (JSONException e) {
-                throw new RuntimeException(e);
+                e.printStackTrace();
             }
-
             return new ResponseEntity<>(response.toString(), HttpStatus.OK);
         }
 

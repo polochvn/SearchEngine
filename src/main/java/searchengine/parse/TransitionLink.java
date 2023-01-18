@@ -1,12 +1,13 @@
 package searchengine.parse;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
-import searchengine.config.Status;
-import searchengine.lemmatizator.Materialize;
+import searchengine.materializer.Materialize;
 import searchengine.model.*;
 import searchengine.repository.IndexRepository;
 import searchengine.repository.LemmaRepository;
@@ -23,12 +24,15 @@ import java.util.concurrent.RecursiveTask;
 @Component
 @Scope(scopeName = ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 public class TransitionLink extends RecursiveTask<Integer> {
+    private final static Log log = LogFactory.getLog(TransitionLink.class);
     private final NodeLink nodeLink;
     private Integer pageCount;
     private String startPath;
     private final String mainPath;
+    private static boolean isStopping;
     private static final Map<String, Float> fields = new HashMap<>();
     private static final ConcurrentHashMap<String, Lemma> lemmasMap = new ConcurrentHashMap<>();
+    private final Materialize materialize;
     private static PageRepository pageRepository;
     private static IndexRepository indexRepository;
     private static SiteRepository siteRepository;
@@ -41,6 +45,7 @@ public class TransitionLink extends RecursiveTask<Integer> {
         this.nodeLink = nodeLink;
 
         this.mainPath = sitePath;
+        materialize = new Materialize(lemmaRepository);
 
         fieldRepository.findAll().forEach(it ->
                 TransitionLink.fields.put(it.getName(), it.getWeight())
@@ -67,9 +72,9 @@ public class TransitionLink extends RecursiveTask<Integer> {
     public TransitionLink(NodeLink nodeLink, String startPath, Site site, String mainPath) {
         this.nodeLink = nodeLink;
         this.startPath = startPath;
+        materialize = new Materialize(lemmaRepository);
 
         pageCount = 0;
-
         this.mainPath = mainPath;
         this.site = site;
     }
@@ -86,20 +91,17 @@ public class TransitionLink extends RecursiveTask<Integer> {
             try {
                 for (String link : links) {
 
-                        if (pageRepository.findByPath(link) == null) {
-                            Document document = Jsoup.connect(mainPath + link).get();
-                            addPage(document, link);
-                            NodeLink nodeLink = new NodeLink(mainPath + link, document);
-                            System.out.println(mainPath + link);
-                            nodeLinkSet.add(nodeLink);
-                        }
-
+                    if (pageRepository.findByPath(link) == null && !isStopping()) {
+                        Document document = Jsoup.connect(mainPath + link).get();
+                        addPage(document, link);
+                        NodeLink nodeLink = new NodeLink(mainPath + link, document);
+                        log.info(mainPath + link);
+                        nodeLinkSet.add(nodeLink);
                     }
+                }
 
             } catch (IOException | NullPointerException exception) {
-                site.setError("Остановка индексации");
-                site.setStatus(Status.FAILED);
-                siteRepository.save(site);
+                exception.fillInStackTrace();
             }
 
             List<TransitionLink> listTask = new ArrayList<>();
@@ -110,23 +112,24 @@ public class TransitionLink extends RecursiveTask<Integer> {
                     listTask.add(task);
                 }
             }
-
-            pageCount += addResultsFromTasks(pageCount, listTask);
-
-        return pageCount;
+        return addResultsFromTasks(listTask);
     }
 
-    public void addPage(String link) throws IOException {
-        addPage(Jsoup.connect(link).get(), nodeLink.parseOneLink(link));
+    public void addPage(String link)  {
+        try {
+            addPage(Jsoup.connect(link).get(), link.replaceAll(site.getUrl(), ""));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
-    public void addPage(Document doc, String link) throws IOException {
+    public void addPage(Document doc, String link) {
         Page page = new Page();
         int code = doc.connection().response().statusCode();
         page.setCode(code);
         page.setPath(link);
         page.setContent(doc.html());
-        page.setSite(site);//\xF0\x9F\x98\x83
+        page.setSite(site);
 
         pageRepository.save(page);
 
@@ -134,7 +137,7 @@ public class TransitionLink extends RecursiveTask<Integer> {
             addLemmas(doc, page);
         }
     }
-    public void addLemmas(Document doc, Page page) throws IOException {
+    public void addLemmas(Document doc, Page page) {
 
         ConcurrentHashMap<String, Index> indices = new ConcurrentHashMap<>();
         Lemma oldLemma;
@@ -156,7 +159,6 @@ public class TransitionLink extends RecursiveTask<Integer> {
                 lemmasMap.put(word, oldLemma);
 
                 addIndex(oldLemma, page, words, word, indices, key);
-
             }
         }
     }
@@ -177,13 +179,25 @@ public class TransitionLink extends RecursiveTask<Integer> {
         }
     }
 
-    private Integer addResultsFromTasks(Integer count, List<TransitionLink> tasks) {
+    private int addResultsFromTasks(List<TransitionLink> tasks) {
+        int count = 0;
             for (TransitionLink item : tasks) {
-                count = item.join();
+                count += item.join();
             }
             return count;
     }
     public Site getSite() {
         return site;
+    }
+
+    public void onStartIndexing() {
+        isStopping = false;
+    }
+    public void offStartIndexing() {
+        isStopping = true;
+    }
+
+    public static boolean isStopping() {
+        return isStopping;
     }
 }
