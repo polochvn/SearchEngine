@@ -10,6 +10,7 @@ import searchengine.config.SitesList;
 import searchengine.config.Status;
 import searchengine.model.*;
 import searchengine.parse.NodeLink;
+import searchengine.parse.PoolThread;
 import searchengine.parse.TransitionLink;
 import searchengine.repository.*;
 import searchengine.search.SearchText;
@@ -17,6 +18,7 @@ import searchengine.search.SearchText;
 import java.util.*;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 @Service
@@ -40,6 +42,7 @@ public class Storage {
         indexRepository.deleteAll();
         lemmaRepository.deleteAll();
         pageRepository.deleteAll();
+        siteRepository.deleteAll();
         fieldRepository.deleteAll();
     }
     private TransitionLink transition(Site site, NodeLink nodeLink) {
@@ -67,14 +70,6 @@ public class Storage {
 
         List<TransitionLink> parses = new ArrayList<>();
         List<searchengine.config.Site> siteList = sites.getSites();
-        if (siteList.size() == 0) {
-            for (Site site : siteRepository.findAll()) {
-                searchengine.config.Site nSite = new searchengine.config.Site();
-                nSite.setUrl(site.getUrl());
-                nSite.setName(site.getName());
-                siteList.add(nSite);
-            }
-        }
         log.info("Sites number " + siteList.size());
 
         initFields();
@@ -99,35 +94,11 @@ public class Storage {
             siteRepository.save(site);
         }
 
-        siteList.clear();
-
         for (TransitionLink parse : parses) {
-        threads.add(new Thread(() -> {
-            Site site = parse.getSite();
-
-            try {
-                ForkJoinPool forkJoinPool = new ForkJoinPool(THREADS);
-                forkJoinPools.add(forkJoinPool);
-
-                forkJoinPool.execute(parse);
-                parse.join();
-
-                if (!forkJoinPool.isTerminating()) {
-                    saveStoppedSite(site);
-                }
-                site.setStatus(Status.INDEXED);
-                siteRepository.save(site);
-
-            } catch (CancellationException ex) {
-                ex.printStackTrace();
-                log.warn(site.getError());
-                saveStoppedSite(site);
-            }
-        }));
+            PoolThread thread = new PoolThread(parse, forkJoinPools, siteRepository, THREADS);
+            thread.start();
+            threads.add(thread);
         }
-
-        threads.forEach(Thread::start);
-        forkJoinPools.forEach(ForkJoinPool::shutdown);
     }
 
     public boolean startIndexing() {
