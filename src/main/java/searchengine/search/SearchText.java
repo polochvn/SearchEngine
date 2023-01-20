@@ -58,7 +58,7 @@ public class SearchText {
                 List<Page> pages = pageRepository.findAllBySite(site);
                 return addSearchQuery(text, site, pages);
         }
-        private Set<SearchResult> addSearchQuery(String text, Site site, List<Page> pages) throws IOException {
+        private Set<SearchResult> addSearchQuery(String text, Site site, List<Page> pages) {
                 SortedSet<Lemma> lemmas = new TreeSet<>();
 
                 for (String word : text.split(" ")) {

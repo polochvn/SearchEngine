@@ -16,9 +16,7 @@ import searchengine.repository.*;
 import searchengine.search.SearchText;
 
 import java.util.*;
-import java.util.concurrent.CancellationException;
 import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 @Service
@@ -66,6 +64,7 @@ public class Storage {
     public void indexing() {
         threads = new ArrayList<>();
         forkJoinPools = new ArrayList<>();
+        TransitionLink.removeDataFromLemmasMap();
         clearData();
 
         List<TransitionLink> parses = new ArrayList<>();

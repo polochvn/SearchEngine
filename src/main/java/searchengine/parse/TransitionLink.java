@@ -131,7 +131,7 @@ public class TransitionLink extends RecursiveTask<Integer> {
         page.setContent(doc.html());
         page.setSite(site);
 
-        pageRepository.saveAndFlush(page);
+        pageRepository.save(page);
 
         if (code < 400) {
             addLemmas(doc, page);
@@ -155,7 +155,7 @@ public class TransitionLink extends RecursiveTask<Integer> {
                     int freq = oldLemma.getFrequency();
                     oldLemma.setFrequency(freq + 1);
                 }
-                lemmaRepository.saveAndFlush(oldLemma);
+                lemmaRepository.save(oldLemma);
                 lemmasMap.put(word, oldLemma);
 
                 addIndex(oldLemma, page, words, word, indices, key);
@@ -199,5 +199,9 @@ public class TransitionLink extends RecursiveTask<Integer> {
 
     public static boolean isStopping() {
         return isStopping;
+    }
+
+    public static void removeDataFromLemmasMap() {
+        lemmasMap.clear();
     }
 }
