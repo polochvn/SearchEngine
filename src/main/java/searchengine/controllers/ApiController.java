@@ -31,6 +31,7 @@ public class ApiController {
             if (isStartIndexing) {
                 response.put("result", false);
                 response.put("error", "Индексация уже запущена");
+                return new ResponseEntity<>(response.toString(), HttpStatus.METHOD_NOT_ALLOWED);
             } else {
                 response.put("result", true);
             }
@@ -49,6 +50,7 @@ public class ApiController {
             if (isStopIndexing) {
                 response.put("result", false);
                 response.put("error", "Индексация не запущена");
+                return new ResponseEntity<>(response.toString(), HttpStatus.METHOD_NOT_ALLOWED);
             } else {
                 response.put("result", true);
             }
@@ -74,6 +76,7 @@ public class ApiController {
                 response.put("result", false);
                 response.put("error", "Данная страница находится за пределами сайтов, " +
                         "указанных в конфигурационном файле");
+                return new ResponseEntity<>(response.toString(), HttpStatus.BAD_REQUEST);
             }
         } catch (JSONException e) {
             e.printStackTrace();
@@ -92,6 +95,7 @@ public class ApiController {
             try {
                 response.put("result", false);
                 response.put("error", "Задан пустой поисковый запрос");
+                return new ResponseEntity<>(response.toString(), HttpStatus.BAD_REQUEST);
             } catch (JSONException ex) {
                 ex.printStackTrace();
             }
@@ -112,7 +116,7 @@ public class ApiController {
             } catch (JSONException e) {
                 e.printStackTrace();
             }
-            return new ResponseEntity<>(response.toString(), HttpStatus.OK);
+            return new ResponseEntity<>(response.toString(), HttpStatus.BAD_REQUEST);
         }
 
         return new ResponseEntity<>(storage.search(query, site, offset, limit), HttpStatus.OK);

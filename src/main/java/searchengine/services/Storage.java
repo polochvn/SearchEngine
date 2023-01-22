@@ -9,11 +9,10 @@ import searchengine.config.SearchResult;
 import searchengine.config.SitesList;
 import searchengine.config.Status;
 import searchengine.model.*;
-import searchengine.parse.NodeLink;
-import searchengine.parse.PoolThread;
-import searchengine.parse.TransitionLink;
+import searchengine.services.parse.NodeLink;
+import searchengine.services.parse.PoolThread;
+import searchengine.services.parse.TransitionLink;
 import searchengine.repository.*;
-import searchengine.search.SearchText;
 
 import java.util.*;
 import java.util.concurrent.ForkJoinPool;

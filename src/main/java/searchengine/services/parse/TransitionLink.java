@@ -1,4 +1,4 @@
-package searchengine.parse;
+package searchengine.services.parse;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.jsoup.Jsoup;
@@ -7,7 +7,7 @@ import org.jsoup.nodes.Document;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
-import searchengine.materializer.Materialize;
+import searchengine.services.materializer.Materialize;
 import searchengine.model.*;
 import searchengine.repository.IndexRepository;
 import searchengine.repository.LemmaRepository;
@@ -26,7 +26,6 @@ import java.util.concurrent.RecursiveTask;
 public class TransitionLink extends RecursiveTask<Integer> {
     private final static Log log = LogFactory.getLog(TransitionLink.class);
     private final NodeLink nodeLink;
-    private Integer pageCount;
     private String startPath;
     private final String mainPath;
     private static boolean isStopping;
@@ -74,7 +73,6 @@ public class TransitionLink extends RecursiveTask<Integer> {
         this.startPath = startPath;
         materialize = new Materialize(lemmaRepository);
 
-        pageCount = 0;
         this.mainPath = mainPath;
         this.site = site;
     }

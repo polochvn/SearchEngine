@@ -1,11 +1,11 @@
-package searchengine.search;
+package searchengine.services;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import searchengine.config.IndexRank;
 import searchengine.config.Search;
 import searchengine.config.SearchResult;
-import searchengine.materializer.Materialize;
+import searchengine.services.materializer.Materialize;
 import searchengine.model.*;
 import searchengine.repository.*;
 
