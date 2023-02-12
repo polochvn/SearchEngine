@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import searchengine.dto.statistics.StatisticsResponse;
 import searchengine.repository.SiteRepository;
 import searchengine.services.StatisticsService;
-import searchengine.services.Storage;
+import searchengine.services.ApiService;
 
 @RestController
 @RequestMapping("/api")
@@ -17,7 +17,7 @@ import searchengine.services.Storage;
 public class ApiController {
 
     private final StatisticsService statisticsService;
-    private final Storage storage;
+    private final ApiService storage;
     private final SiteRepository siteRepository;
     @GetMapping("/statistics")
     public ResponseEntity<StatisticsResponse> statistics() {
@@ -62,7 +62,7 @@ public class ApiController {
 
     @PostMapping("/indexPage")
     public ResponseEntity<String> indexPage(@RequestParam(name = "url") String url) {
-        if (url == null) {
+        if (url == null || url.equals("")) {
             return new ResponseEntity<>("", HttpStatus.BAD_REQUEST);
         }
 
@@ -75,8 +75,8 @@ public class ApiController {
             } else {
                 response.put("result", false);
                 response.put("error", "Данная страница находится за пределами сайтов, " +
-                        "указанных в конфигурационном файле");
-                return new ResponseEntity<>(response.toString(), HttpStatus.BAD_REQUEST);
+                                                                    "указанных в конфигурационном файле");
+                return new ResponseEntity<>(response.toString(), HttpStatus.OK);
             }
         } catch (JSONException e) {
             e.printStackTrace();

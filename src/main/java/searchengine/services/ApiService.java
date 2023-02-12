@@ -20,8 +20,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 @Service
 @RequiredArgsConstructor
-public class Storage {
-    private final static Log log = LogFactory.getLog(Storage.class);
+public class ApiService {
+    private final static Log log = LogFactory.getLog(ApiService.class);
     private static final int THREADS = 3;
     private static final Map<String, Float> fields = new HashMap<>(
                                         Map.of("title", 1.0F, "body", 0.8F));
@@ -114,7 +114,6 @@ public class Storage {
             return true;
         }
         new Thread(this::indexing).start();
-
         return false;
     }
 
@@ -157,70 +156,64 @@ public class Storage {
     }
 
     public void saveStoppedSite(Site site) {
-        site.setError("Индексация остановлена принудительно!");
+        site.setError("Индексация остановлена!");
         site.setStatus(Status.FAILED);
         siteRepository.save(site);
     }
 
     public boolean indexPage(String url) {
         List<Site> siteList = siteRepository.findAll();
-
         initFields();
-
-        Page page = null;
 
         if (siteList.size() == 0) {
             List<searchengine.config.Site> configSites = sites.getSites();
 
             for (searchengine.config.Site configSite : configSites) {
-                page = pageRepository.findByPath(url.replaceAll(configSite.getUrl(), ""));
+                Page page = pageRepository.findByPath(url.replaceAll(configSite.getUrl(), ""));
 
-                if (url.contains(configSite.getUrl()) && page == null) {
+                if (!(page == null)) {
+                    return true;
+                }
+
+                if (url.contains(configSite.getUrl())) {
                     String mainPage = configSite.getUrl();
 
                     Site site = new Site();
 
                     site.setUrl(mainPage);
                     site.setStatusTime(new Date());
-                    site.setStatus(Status.INDEXING);
                     site.setError("");
                     site.setName(configSite.getName());
-                    siteRepository.save(site);
-
-                    NodeLink node = new NodeLink(url);
-                    TransitionLink parse = new TransitionLink(node, site.getUrl(), site,
-                            fieldRepository, siteRepository, indexRepository,
-                            pageRepository, lemmaRepository);
-
-                    parse.addPage(url);
-                    site.setStatus(Status.INDEXED);
-                    siteRepository.save(site);
-
+                    addPage(url, site);
                     return true;
                 }
             }
         } else {
             for (Site site : siteList) {
-                page = pageRepository.findByPath(url.replaceAll(site.getUrl(), ""));
+                Page page = pageRepository.findByPath(url.replaceAll(site.getUrl(), ""));
 
-                if (url.contains(site.getUrl()) && page == null) {
-                    site.setStatus(Status.INDEXING);
-                    siteRepository.save(site);
-
-                    NodeLink node = new NodeLink(url);
-                    TransitionLink parse = new TransitionLink(node, site.getUrl(), site,
-                                            fieldRepository, siteRepository, indexRepository,
-                                                        pageRepository, lemmaRepository);
-                    parse.addPage(url);
-                    site.setStatus(Status.INDEXED);
-                    siteRepository.save(site);
-
+                if (!(page == null)) {
+                    return true;
+                }
+                if (url.contains(site.getUrl())) {
+                    addPage(url, site);
                     return true;
                 }
             }
         }
+        return false;
+    }
 
-        return !(page == null);
+    public void addPage(String url, Site site) {
+        site.setStatus(Status.INDEXING);
+        siteRepository.save(site);
+        NodeLink node = new NodeLink(url);
+        TransitionLink parse = new TransitionLink(node, site.getUrl(), site,
+                fieldRepository, siteRepository, indexRepository,
+                pageRepository, lemmaRepository);
+        parse.addPage(url);
+        site.setStatus(Status.INDEXED);
+        siteRepository.save(site);
     }
 
     public Search search(String query, String site, int offset, int limit) {

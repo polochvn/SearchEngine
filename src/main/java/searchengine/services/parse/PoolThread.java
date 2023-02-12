@@ -31,10 +31,6 @@ public class PoolThread extends Thread {
            pool.execute(transition);
            transition.join();
 
-           if (!pool.isTerminating()) {
-               saveStoppedSite(site);
-           }
-
            site.setStatus(Status.INDEXED);
            siteRepository.save(site);
 
@@ -44,7 +40,7 @@ public class PoolThread extends Thread {
         }
     }
     public void saveStoppedSite(Site site) {
-        site.setError("Индексация остановлена принудительно!");
+        site.setError("Индексация остановлена!");
         site.setStatus(Status.FAILED);
         siteRepository.save(site);
     }

@@ -18,7 +18,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
 @RequiredArgsConstructor
-public class StatisticsService{
+public class StatisticsService {
     @Autowired
     private final SiteRepository siteRepository;
     @Autowired
