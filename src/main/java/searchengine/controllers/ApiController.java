@@ -17,21 +17,22 @@ import searchengine.services.ApiService;
 public class ApiController {
 
     private final StatisticsService statisticsService;
-    private final ApiService storage;
+    private final ApiService apiService;
     private final SiteRepository siteRepository;
+
     @GetMapping("/statistics")
     public ResponseEntity<StatisticsResponse> statistics() {
         return ResponseEntity.ok(statisticsService.getStatistics());
     }
     @GetMapping("/startIndexing")
     public ResponseEntity<String> startIndexing() {
-        boolean isStartIndexing = storage.startIndexing();
+        boolean isStartIndexing = apiService.startIndexing();
         JSONObject response = new JSONObject();
         try {
             if (isStartIndexing) {
                 response.put("result", false);
                 response.put("error", "Индексация уже запущена");
-                return new ResponseEntity<>(response.toString(), HttpStatus.METHOD_NOT_ALLOWED);
+                return new ResponseEntity<>(response.toString(), HttpStatus.OK);
             } else {
                 response.put("result", true);
             }
@@ -43,14 +44,14 @@ public class ApiController {
 
     @GetMapping("/stopIndexing")
     public ResponseEntity<String> stopIndexing() {
-        boolean isStopIndexing = storage.stopIndexing();
+        boolean isStopIndexing = apiService.stopIndexing();
         JSONObject response = new JSONObject();
 
         try {
             if (isStopIndexing) {
                 response.put("result", false);
                 response.put("error", "Индексация не запущена");
-                return new ResponseEntity<>(response.toString(), HttpStatus.METHOD_NOT_ALLOWED);
+                return new ResponseEntity<>(response.toString(), HttpStatus.OK);
             } else {
                 response.put("result", true);
             }
@@ -66,7 +67,7 @@ public class ApiController {
             return new ResponseEntity<>("", HttpStatus.BAD_REQUEST);
         }
 
-        boolean isPageAdded = storage.indexPage(url);
+        boolean isPageAdded = apiService.indexPage(url);
         JSONObject response = new JSONObject();
 
         try {
@@ -95,7 +96,7 @@ public class ApiController {
             try {
                 response.put("result", false);
                 response.put("error", "Задан пустой поисковый запрос");
-                return new ResponseEntity<>(response.toString(), HttpStatus.BAD_REQUEST);
+                return new ResponseEntity<>(response.toString(), HttpStatus.OK);
             } catch (JSONException ex) {
                 ex.printStackTrace();
             }
@@ -104,7 +105,7 @@ public class ApiController {
         }
 
         if (site == null) {
-            return new ResponseEntity<>(storage.search(query, site, offset, limit), HttpStatus.OK);
+            return new ResponseEntity<>(apiService.search(query, site, offset, limit), HttpStatus.OK);
         }
 
         if (siteRepository.findSiteByUrl(site).getUrl() == null) {
@@ -116,9 +117,8 @@ public class ApiController {
             } catch (JSONException e) {
                 e.printStackTrace();
             }
-            return new ResponseEntity<>(response.toString(), HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>(response.toString(), HttpStatus.OK);
         }
-
-        return new ResponseEntity<>(storage.search(query, site, offset, limit), HttpStatus.OK);
+        return new ResponseEntity<>(apiService.search(query, site, offset, limit), HttpStatus.OK);
     }
 }

@@ -7,6 +7,8 @@ import searchengine.config.Status;
 import searchengine.model.Site;
 import searchengine.repository.SiteRepository;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.RejectedExecutionException;
@@ -31,6 +33,7 @@ public class PoolThread extends Thread {
            pool.execute(transition);
            transition.join();
 
+           site.setStatusTime(new Date());
            site.setStatus(Status.INDEXED);
            siteRepository.save(site);
 
@@ -41,6 +44,7 @@ public class PoolThread extends Thread {
     }
     public void saveStoppedSite(Site site) {
         site.setError("Индексация остановлена!");
+        site.setStatusTime(new Date());
         site.setStatus(Status.FAILED);
         siteRepository.save(site);
     }

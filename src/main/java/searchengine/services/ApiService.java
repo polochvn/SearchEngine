@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.stereotype.Service;
-import searchengine.config.Search;
 import searchengine.config.SearchResult;
 import searchengine.config.SitesList;
 import searchengine.config.Status;
@@ -14,6 +13,7 @@ import searchengine.services.parse.PoolThread;
 import searchengine.services.parse.TransitionLink;
 import searchengine.repository.*;
 
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
@@ -23,10 +23,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class ApiService {
     private final static Log log = LogFactory.getLog(ApiService.class);
     private static final int THREADS = 3;
-    private static final Map<String, Float> fields = new HashMap<>(
-                                        Map.of("title", 1.0F, "body", 0.8F));
+    private static final Map<String, Float> fields = new HashMap<>(Map.of("title", 1.0F, "body", 0.8F));
     private TransitionLink transition;
-
     private final FieldRepository fieldRepository;
     private final LemmaRepository lemmaRepository;
     private final PageRepository pageRepository;
@@ -158,6 +156,7 @@ public class ApiService {
     public void saveStoppedSite(Site site) {
         site.setError("Индексация остановлена!");
         site.setStatus(Status.FAILED);
+        site.setStatusTime(new Date());
         siteRepository.save(site);
     }
 
@@ -216,13 +215,13 @@ public class ApiService {
         siteRepository.save(site);
     }
 
-    public Search search(String query, String site, int offset, int limit) {
+    public searchengine.config.Search search(String query, String site, int offset, int limit) {
 
-        SearchText searchText = new SearchText(lemmaRepository);
-        Search search = searchText.search(query, siteRepository.findSiteByUrl(site), pageRepository,
+        Search searchText = new Search(lemmaRepository);
+        searchengine.config.Search search = searchText.search(query, siteRepository.findSiteByUrl(site), pageRepository,
                                                 indexRepository, fieldRepository, siteRepository);
         if (search.getCount() < offset) {
-            return new Search();
+            return new searchengine.config.Search();
         }
 
         if (search.getCount() > limit) {

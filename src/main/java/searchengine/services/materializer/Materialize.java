@@ -19,13 +19,11 @@ public class Materialize {
 
     public Lemma getLemma(String word, Site site) {
 
-        if (checkRussianForm(word)) {
-            Lemma lemma = lemmaRepository.findLemmaByLemmaAndSite(word, site);
-            return lemma;
+        if (checkRussianForm(word.toLowerCase(Locale.ROOT))) {
+            return lemmaRepository.findLemmaByLemmaAndSite(word.toLowerCase(Locale.ROOT), site);
         }
         return null;
     }
-
     private boolean checkRussianForm(String word) {
 
         String russianAlphabet = "[а-яА-Я]+";
